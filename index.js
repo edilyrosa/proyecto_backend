@@ -50,7 +50,9 @@ app.put("/usuarios/:id", async (req, res, next) =>{
         const id = req.params.id
         const usuario = req.body
         const camposActualizar = Object.fromEntries( //* convierte un array de pares clave-valor en un objeto, entonces camposActualizar es un objeto
-           Object.entries(usuario).filter(([key, value]) => {camposValidos.includes(key) && value !== undefined} ) 
+           Object.entries(usuario).filter(([key, value]) => { 
+            //!FALTO return
+            return camposValidos.includes(key) && value !== undefined} ) 
             //filter es un mtodo de los arrays, no de los objetos
        ) 
        if(Object.keys(camposActualizar).length === 0) throw new HttpError('No hay campos validos para actualizar', 400)
@@ -81,11 +83,13 @@ function validarUsuario(obj){ //Funcion booleana, si retorna true, el objeto dat
     const camposObligatorios = ['nombre', 'email', 'edad', 'aceptacion', 'foto', 'genero']
     //every() Evalua si TODOS los elementos del array cumplen con la condicion dada
     //Retornando TRUE si TODOS los elementos cumplen la condicion, o FALSE si ALGUNO no la cumple
-   return camposObligatorios.every( campo => { obj[campo] !== undefined && obj[campo] !== '' } )
+   return camposObligatorios.every( campo => { 
+     //!FALTO return
+    return obj[campo] !== undefined && obj[campo] !== '' } ) //!significa que el campo debe cumplir ambas condiciones a la vez: no ser undefined y no ser cadena vacía. Esto es lo que se quiere para asegurar que el campo tiene un valor válido.
 }
 
 //*POST DEL USUARIO
-app.post('/usuarios', async (req, res, netx)=>{
+app.post('/usuarios', async (req, res, next)=>{
     try {
         const objUsuario =  req.body //{nombre: 'Juan', email: ...'
         if(!validarUsuario( objUsuario)) throw new HttpError('Datos de usuario incompletos o invalidos', 400)
