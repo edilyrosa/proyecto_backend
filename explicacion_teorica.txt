@@ -1,0 +1,506 @@
+**********************BASE DE DATOS - SUPABASE
+
+1️⃣ Regístrate y Crear un proyecto en Supabase.
+Regístrate en https://supabase.com/
+
+A. sign up -> correo || GitHub -> Check your email to confirm-> 
+
+B. Te redirecciona al dashboard de SupaBase, pestana New organization -> 
+New organization: acepta los valores defaults y click en "create organization"
+
+C. Create a new project -> Rellena: Database Password y Region (South America), 
+acepta los demas valores defaults y click en "create new project"
+
+D. En Project API copia los siguientes valores (esta en el 1er icono "Project Overview"), 
+⭐copia estos secretos, porque seran las credenciales usadas en el backend para 
+conectarte a las tablas que crees en este proyecto: 
+✅Project URL: https://zqgdtbocblpyjdvcyqhp.supabase.co
+✅API Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs...
+MIRAR (IMG 1)
+para la conexión básica y las operaciones comunes desde un backend de Node.js, 
+la combinación de la Project URL y la anon public API Key es la forma estándar y segura.
+
+⭐⭐⭐🧠👀6️⃣En el proyecto backend, crearas el archivo .env y pega esos datos secretos, que son la llave para 
+conectar la BBDD Supa con nuestro Backend, y desde alla acceder a la data. Estas variables de entorno seran usadas 
+como parametron para crear un ClientSupa que representa una promesa (especie de fetch) que trae la data de la 
+BD para ser servida por el backend.
+🚫❌🚫❌🚩🚩🚩No uses la clave service_role en el frontend: Esta clave tiene permisos totales y debe mantenerse s
+egura en el backend. En el frontend solo usa la clave anon (que tiene permisos limitados y está sujeta a las políticas RLS).
+
+
+
+2️⃣Crear la tabla usuarios
+En el panel izquierdo -> "Table Editor" ->  + new table ->  nombre a la tabla: "usuarios" -> 
+escroll down -> click sobre "add column": llena las casillas para dar nombre y establecer el TDD 
+de la columna, hazlo tantas columnas tenga tu tabla, ejemplo: nombre, edad, email, foto, aceptacion y genero (la columna id, se crea automaticamente) ->   save. 
+MIRAR (IMG 2)
+
+
+3️⃣ Inserta registros en la tabla que has creeado -> insert -> insert row
+MIRAR (IMG 3)
+
+
+🧠⭐ Puedes hacerlo tambien en el SQL Editor
+✏️
+INSERT INTO usuarios (nombre, edad, email, foto, aceptacion, genero)
+VALUES (
+  'Karla Rojas', 
+  33,
+  'ka@gmail.com', 
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTj62bw4TZh2Tdbt269A3qdB2Bk6yxwOpxeLw&s', 
+  12, 
+  true
+);
+
+
+
+
+4️⃣Click sobre: Add RLS Policy
+Configura políticas de Row Level Security (RLS) para la tabla. Por defecto, 
+Supabase bloquea todas las operaciones hasta que definas políticas explícitas.
+
+Paso 1: Habilitar RLS en la tabla usuarios (si no está habilitado)
+Ejecuta este SQL en el SQL Editor de Supabase:
+
+✏️
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY; 
+click sobre "Run CTRL"
+Asegurate de obtener el mensaje de exito: "Success. No rows returned"
+MIRAR (IMG 4 y 5)
+
+Paso 2: Crear políticas para permitir el acceso desde tu backend
+Política para SELECT (leer usuarios)
+Permite que tu backend obtenga todos los usuarios usando la clave de servicio (service key):
+Tal y como lo hiciste en el paso anterior, ejecuta este SQL en el SQL Editor de Supabase y Asegurate de 
+obtener el mensaje de exito: "Success. No rows returned":
+✏️ 
+CREATE POLICY "Allow public select" ON usuarios
+FOR SELECT
+TO anon
+USING (true);
+
+
+💡RLS se activa por tabla, ya deberias tener la tuya activa en la tabla usuarios. 
+Cada tabla puede tener sus propias políticas de seguridad. No existe un interruptor 
+global para activar RLS en todo el proyecto. Esto te permite controlar el acceso de forma granular 
+y segura según las necesidades específicas de cada conjunto de datos.
+
+
+
+
+
+**************************BACKEND - SERVIDOR WEB.
+
+💻NECESITAS node.js
+Para verificar si Node.js y npm están instalados en tu SO, abre tu terminal o línea de comandos y ejecuta:
+node -v
+npm -v
+
+🚫❌Si te aparece un error, debes instalarlo: Ve a la página oficial de Node.js: https://nodejs.org/
+Descarga e instala la versión LTS (Long Term Support), que es la recomendada para la mayoría de los usuarios.
+
+1️⃣Crea una carpeta para tu proyecto.
+2️⃣Corre:  
+🌟🌟npm init -y 
+En la terminal, para inicializar el proyecto. Se creara el archivo "package.json", que lo siguiente:
+	✅"name": "backend-usuarios",
+	✅"version": "1.0.0",
+	✅"main": "index.js", ->  || app.js || server.js, el nombre de tu archivo principal
+	➕"type":"module", -> Add esto para usar ES6 default (import/export), deja de usar .mjs
+	✅"scripts": {
+    ...
+     ➕"start": "node index.js" -> Igual al value de "main", sera necesario para cuando desplegemos el proyecto, 
+     nos pediren el script de arranque
+  } 
+	⌚dependencies:{}
+	⌚devDependencies:{} ->  Usando el indicador -D 
+	⌚...
+
+3️⃣Instalamos los módulos o paquetes de los cuales dependera nuestro proyecto, como: 
+🌟🌟npm i express
+🌟🌟npm install cors   -> evitar problemas con los origines entre front y back
+🌟🌟npm install @supabase/supabase-js
+🌟🌟npm install dotenv -> para leer las variables de entorno, los secretos de las APIS
+
+La primera instalacion creara: 
+✅node_modules/      →💡🚩Incluise en .gitignore
+✅package-lock.json  →💡🚩si hay problema con package.json → overwrite → otra vez install dependences
+
+
+4️⃣Crea los siguientes archivos en la raíz de tu proyecto (donde está tu package.json).
+✅ index.js || app.js || server.js
+✅.gitignore
+✅.env        ->💡👀🚩Incluir en .gitignore
+✅supabaseClient.js
+
+*********************5️⃣ En index.js: creación de servidor web con el framework express.js
+//? Importar: express y cors, crea app con express() y usalos:
+const PORT = 3000
+const app = express()
+app.use(express.json()); // Parsear JSON en las peticiones
+app.use(cors()); // Habilitar CORS para todos los orígenes
+app.get('/usuarios',  async (req, res) =>{})
+app.listen(PORT, ()=>{ log()}) 
+-> ejecuta: nodemon index.js
+
+🧠🤯nodemon: Es útil para desarrollo, al expiar los archivos y hacer que el servidor se 
+reinicie cuando cambien. 
+⁉️🙋🏽‍♀️como se si ya tengo nodemon, ejecuta en la terminal:
+nodemon -v
+
+Si no lo tienes, instalalo.
+Instalacion: instala nodemon globalmente te permite usarlo en cualquier proyecto 
+sin tener que instalarlo repetidamente.
+✏️
+npm install -g nodemon -> El -g significa "global
+
+Una vez instalado, en lugar de ejecutar tu aplicación con node lo haces con nodemon, asi:
+🚫node index.js,    -> 👀🏳️Seguira siendo tu script default, para desplegar. MANTENLO!
+✅nodemon index.js
+
+
+********************6️⃣En supabaseClient.js: Configurar el cliente en tu backend.
+// supabaseClient.js
+import dotenv from 'dotenv'; //todo: add esto
+dotenv.config();//todo: add esto
+import { createClient } from '@supabase/supabase-js'
+const supabaseUrl = 'https://flrhaoijvzluodziysoq.supabase.co'
+const supabaseKey = process.env.SUPABASE_KEY
+export const supabase = createClient(supabaseUrl, supabaseKey)
+
+********************7️⃣En .env 
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5...
+
+********************8️⃣Vuelve al index.js consume y usa las tablas de supabase
+import { supabase } from './supabaseClient.js' //****AQUIIIII!!*****
+import express from "express";
+import cors from 'cors';
+
+const app = express()
+const PORT = 3000
+
+app.use(express.json()); // Parsear JSON en las peticiones
+app.use(cors()); // Habilitar CORS para todos los orígenes
+
+
+*******************GENERALIDADES********************
+Express hay varios métodos del objeto res para enviar respuestas o manejar la respuesta al cliente, entre los principales están:
+
+res.send(): Envía datos (HTML, texto, JSON, buffers) y termina la respuesta.
+
+res.json(): Envía una respuesta JSON, serializando automáticamente el objeto pasado.
+
+res.status(): Define el código de estado HTTP de la respuesta (por ejemplo, 200, 404).
+
+res.sendFile(): Envía un archivo como respuesta, útil para servir archivos estáticos.
+
+res.end(): Termina la respuesta sin enviar datos adicionales (menos frecuente sin combinar).
+
+res.redirect(): Redirige al cliente a otra URL.
+
+res.render(): Usa un motor de plantillas para renderizar y enviar vistas dinámicas (si tienes configurado un motor de plantillas).
+
+Estos métodos se pueden combinar para formar respuestas completas, y algunos devuelven el objeto de respuesta para encadenar llamadas (por ejemplo, res.status(404).send('Not found')). Así puedes manejar distintos escenarios y tipos de respuesta en tu servidor Express.
+
+app.get('/', (req, res) => {
+  res.status(200).send(`<h1 style="text-align: center; color: red;">conectado🚀 en el puerto ${PORT}</h1>`);
+});
+
+ ***********
+
+app.use((req, res) => {
+  res.status(404).send(`<h1 style="text-align: center; color: red;"> ❌Error 404 ❌</h1>`);
+});
+Esta ruta usa app.use sin especificar método ni ruta, por lo que actúa como "catch-all" para cualquier petición que no coincida con rutas previas. Aquí se establece el código de estado 404 y se envía el mensaje con estilo HTML.
+
+Es importante que esta ruta sea la última en definirse, después de todas tus rutas normales, ya que Express las evalúa en orden y la primera que coincida responde la petición.
+
+Así, si un usuario entra a una URL no configurada en tu servidor, verá la página de error 404 personalizada que definiste. Esta es la forma estándar y recomendada para manejar errores 404 en Express.​
+****************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+app.get('/usuarios', async (req, res) => {
+    const { data, error } = await supabase //****AQUIIIII!!*****
+      .from('usuarios')
+      .select('*')  // Selecciona todas las columnas
+  
+    if (error) {
+      console.error('Error al obtener usuarios:', error)
+      return res.status(500).send('Error al obtener usuarios')
+    }
+  
+    res.json(data) // Envía los usuarios como JSON
+  })
+
+app.listen(PORT, ()=>{
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+})
+
+💡Explicación: 
+upabase.from('usuarios').select('*') hace una consulta SELECT a la tabla usuarios en tu base de datos 
+Supabase. Si hay un error, responde con código 500 y un mensaje. Si todo va bien, responde con los datos en formato JSON.
+
+
+
+********************9️⃣En .gitignore
+# Environment variables
+.env
+...
+# Node.js dependencies
+node_modules/
+...
+ 
+
+
+
+
+
+
+
+
+######################## ENDPOINTS: GET/ID, POST, PUT Y DELETE.
+1. CODIGO EN GET/ID EN BACKEND.
+//Obtener usuario por ID: https://supabase.com/docs/reference/javascript/using-filters
+//TODO: Obtener usuario por ID:  API Docus -> tables & views -> Read rows -> Filtering ->  // Filters .eq('column', 'Equal to')
+app.get("/usuarios/:id", async (req, res) => {
+    const id = parseInt(req.params.id)
+   const {data, error} = await supabase.from('usuarios').select('*').eq('id', id).single()
+    if(error) return res.status(500).json({error:'Error la obtener al usuario, BACK'})
+    if(!data) return res.status(404).json({error:'Error para encontrar al usuario, BACK'})
+    res.json(data)
+})
+
+
+2. CODIGO EN POST EN BACKEND.
+//TODO: Crear nuevo usuario: API Docus -> tables & views -> Insert a row
+app.post("/usuarios", async (req, res )=> {
+    const usuario = req.body
+     
+    if( //*Si el frontend envía explícitamente null, tu backend lo aceptaría y enviaria a la BBDD. Validar el client.body
+        !usuario.nombre ||
+        !usuario.email ||
+        !usuario.foto ||
+        usuario.edad === undefined ||       // !0 es true y eso haría fallar la validación erróneamente.
+        usuario.aceptacion === undefined || //!  usuario.edad === undefined o usuario.edad == null (detecta null o undefined).
+        usuario.genero === undefined
+    ) return res.status(400).json({error:'Faltan datos para hacer post de usuario, BACK'})
+
+    const {data, error} = await supabase.from('usuarios').insert([{...usuario}]).select().single() //*Enviamos y lo recuperamos
+
+    if(error) return res.status(500).json({error:'Error al crear/postear nuevo usario, BACK'})
+
+    res.json(data)
+})
+
+
+3. CODIGO EN PUT EN BACKEND.
+// Actualizar usuario por ID: API Docus -> tables & views -> Update rows
+app.put("/usuarios/:id", async (req, res)=> {
+  const id =  parseInt(req.params.id)
+  const usuario = req.body
+
+    if( //*Si el frontend envía explícitamente null, tu backend lo aceptaría y enviaria a la BBDD. Validar el client.body
+        usuario.nombre === undefined &&
+        usuario.email === undefined &&
+        usuario.foto === undefined &&
+        usuario.genero === undefined &&
+        usuario.aceptacion === undefined && 
+        usuario.edad === undefined
+    ) return res.status(400).json({error: 'Almenos un campo debe ser enviado para actualizar/put'})
+    
+    //*Creamos el Obj a enviar para actualizar el resgistro del ID.
+    const camposActualizar = {}
+    if(usuario.nombre !== undefined) camposActualizar.nombre = usuario.nombre;
+    if(usuario.edad !== undefined && usuario.edad !== null)  camposActualizar.edad = usuario.edad;
+    if(usuario.email !== undefined) camposActualizar.email = usuario.email;
+    if(usuario.foto !== undefined) camposActualizar.foto = usuario.foto;
+    if(usuario.aceptacion !== undefined && usuario.aceptacion !== null) camposActualizar.aceptacion = usuario.aceptacion;
+    if(usuario.genero !== undefined) camposActualizar.genero = usuario.genero;
+
+    const {data, error} = await supabase.from('usuarios').update(camposActualizar).eq('id', id).select()
+
+    if(error) res.status(500).json({error:'Error al actualizar el usuario BACK'})
+    if(data.length === 0) res.status(404).json({error:'Usuario no encontrado, BACK'})
+      res.json(data[0]) //? Enviamos el usuario actualizado
+})
+
+
+
+3. CODIGO EN DELETE EN BACKEND.
+// //todo: Eliminar usuario por ID: API Docus -> tables & views -> Delete rows
+ app.delete("/usuarios/:id", async (req, res) => {
+   const id = parseInt(req.params.id);
+   const { data, error } = await supabase.from("usuarios").delete().eq("id", id).select();
+
+   if (error) {
+     console.error("Error al eliminar usuario", error);
+     return res.status(500).json({ error: "Error al eliminar usuario BACK" });
+   }
+
+   if (data.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
+   res.status(200).send();
+ })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*****************DESPLIEGUE DEL BACKEND
+Una vez que tienes tu backend configurado para usar Supabase (con las variables de entorno, 
+rutas que consultan la base de datos y las políticas RLS bien definidas), el siguiente paso 
+lógico es desplegar tu backend para que esté disponible públicamente y tu frontend pueda consumirlo.
+
+Pasos para desplegar tu backend Node.js + Express:
+1️⃣Elegir un servicio de hosting para desplegar backend Node.js. Usaremos Render (https://render.com), registrate con GitHub.
+
+2️⃣Preparar tu proyecto para producción: 
+✅Configura tu backend para leer las variables de entorno (usando dotenv o la configuración del host).
+✅En tu package.json, define el script para iniciar el servidor, por ejemplo:
+"scripts": {
+  "start": "node index.js"
+}
+
+3️⃣Subir tu código a un repositorio GitHub con "Publish to GitHub", para facilitar despliegues automáticos. 
+Entonces, crea un repositorio y sube tu proyecto backend, NO SIN ANTES LLENAR TU file .gitignore
+
+4️⃣Configurar el despliegue en la plataforma Render
+1. Crear un nuevo servicio en Render: En el dashboard de Render, en el header haz clic en "New" -> "Web Service" 
+-> GitHub. Scroll down -> Only select repositories -> Select repositories -> elige tu repositorio Git donde 
+está tu backend (por nombre o URL). Render detectará que es un proyecto Node.js. -> save || connect
+1.1 casillas de info del proyecto: Node, main, npm install, ⭐node index.js⭐, clic on capa Free
+
+2. Scroll down -> Configura las variables de entorno en el panel de Render (pues .env es IGNORADA por GitHub). 
+SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_ANON_KEY,..., copialas y pegalas, estan en .env de tu proyecto backend-node
+Entonces, si usas variables de entorno, asegúrate de tener un archivo .env local para desarrollo y luego 
+configurar esas variables en Render.
+
+3. -> Deploy Web Services: Despliega la app y verifica que el backend esté corriendo.
+Tu backend debe escuchar en el puerto que Render asigna, normalmente se usa process.env.PORT:
+
+En la terminal de render, debe aparecer algo como:
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://backend-qi8u.onrender.com
+==> 
+==> ///////////////////////////////////////////////////////////
+==> Detected a new open port HTTP:3001
+
+
+
+5️⃣
+5. Probar el backend desplegado
+Accede a la URL pública que te da la plataforma, por ejemplo:
+
+text
+https://backend-qi8u.onrender.com/⭐usuarios⭐
+Haz peticiones GET, POST, PUT, DELETE para verificar que todo funciona correctamente.
+
+6. Actualizar el frontend
+Cambia la URL de la API en tu frontend para que apunte al backend desplegado.
+
+Por ejemplo:
+js
+const API_URL = "https://backend-qi8u.onrender.com/usuarios"
+
+👀👀👀👀🚩🚩🚩🚩CADA QUE HAGAS CAMBIOS EN TU CODIGO BACKEND, DEBES HACER REDEPLOY EN RENDER DE TU SERVIDOR!!👀👀👀👀👀🚩🚩🚩🚩🚩
+ con clic on -> "Manual Deply", pero antes haz commit en GutHub del cambio !!
+
+
+
+
+
+
+######################### CONFIGURACION DEL CORS: ORIGENES ENTRE BACK Y FRONTEND
+1️⃣
+
+app.use(cors()) ||   app.use(cors({ origin:'*'}))
+
+
+
+
+2️⃣
+//*👀👀👀👀🚩🚩🚩🤯 en la URL de los origin permitidos 🚫❌NO COLOCAR path ->./index.html❌🚫 
+
+app.use(cors({
+  origin:'http://127.0.0.1:5501🚫/index.html🚫'
+}))
+
+
+
+3️⃣
+const allowedOrigins = [
+  // 'http://127.0.0.1:5501',
+  'http://127.0.0.1:3000'
+]
+app.use(cors({
+  origin: (origin, callback) => {
+    if(!origin || allowedOrigins.includes(origin)) callback(null, true) //*✅Permite acceso
+    else callback(new Error('origin no permitido por CORS'), false) //!🚫Denegado acceso
+  }
+
+}))
+
+
+
+2️4️⃣5️⃣6️⃣7️⃣8️⃣9️⃣

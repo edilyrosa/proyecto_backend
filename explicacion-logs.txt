@@ -1,0 +1,214 @@
+*******************************************WEDNESDAY(21/05/25): 🔏Cybersecurity.
+*******************************************MONSDAY(26/05/25): 🔏Cybersecurity.
+
+Recordemos que la clase pasada:
+🔏Con CORS, limitamos en una whitelist, el origin de los front que pueden consumir los endpoints de back.
+
+
+🔏Middleware de logging de seguridad 
+Para registrar información relevante de cada petición que recibe tu servidor, como la IP del cliente, el origen (Origin), 
+la ruta accedida, el método HTTP y la fecha/hora. 
+Esto es fundamental para monitoreo, auditoría y detección de posibles accesos o acciones no autorizadas y metricas.
+
++-------------------+-------------------------------+-------------------------------------------------------------+
+| Nombre del campo  | Cómo obtenerlo                | Descripción breve                                           |
++-------------------+-------------------------------+-------------------------------------------------------------+
+| ip                | *req.ip                       | IP del cliente que hace la petición                         |
+| x_forwarded_for   | req.headers['x-forwarded-for']| IP real del cliente si hay proxy o balanceador              |
+| metodo            | *req.method                   | Método HTTP usado (GET, POST, PUT, DELETE, etc.)            |
+| ruta              | *req.originalUrl              | Ruta completa solicitada por el cliente                     |
+| status_code       | res.statusCode                | Código de estado HTTP de la respuesta (200, 404, 500, etc.) |
+| origen            | *req.headers.origin           | Origen (dominio) desde donde se hizo la petición (CORS)     |
+| referer           | req.headers.referer           | URL de la página previa desde donde llegó la petición       |
+| host              | req.headers.host              | Host solicitado (ej: 'localhost:3000')                      |
+| user_agent        | *req.headers['user-agent']    | Información del navegador o cliente HTTP                    |
+| query_params      | JSON.stringify(req.query)     | Parámetros de consulta de la URL en formato JSON            |
+| body              | JSON.stringify(req.body)      | Cuerpo de la petición (POST/PUT), solo si no es GET         |
+| cookies           | req.headers.cookie            | Cookies enviadas por el cliente                             |
+| protocol          | req.protocol                  | Protocolo usado (http o https)                              |
++-------------------+-------------------------------+-------------------------------------------------------------+
+
+
+
+******************** Buenas prácticas
+1️⃣No loguees datos sensibles (contraseñas, tokens, etc.).
+2️⃣Si tu app crece, usa una librería como Winston o [Pino] para guardar logs en archivos, con distintos niveles (info, warn, error).
+3️⃣Puedes filtrar por rutas o métodos si solo quieres loguear ciertas acciones críticas.
+
+
+
+
+*************** Desarrollo del logging de seguridad 
+1. Crear una tabla en SUPABASE para guardar los datos de los logs generados por el sistema.
+-- Tabla (por si acaso, ya la tienes creada)
+create table if not exists logs (
+  id serial primary key,
+  fecha timestamp default now(),
+  ip text,
+  metodo text,
+  ruta text,
+  origen text,
+  user_agent text
+);
+
+-- Índices útiles para logs
+create index if not exists idx_logs_fecha   on logs(fecha);
+create index if not exists idx_logs_ruta    on logs(ruta);
+create index if not exists idx_logs_origen  on logs(origen);
+
+-- Habilitar Row Level Security en la tabla logs
+alter table logs enable row level security;
+
+-- Política de acceso "abierto" (solo para desarrollo)
+create policy "Acceso público a logs (desarrollo)"
+on logs
+for all          -- SELECT, INSERT, UPDATE, DELETE
+to public        -- aplica a anon + authenticated
+using (true)
+with check (true);
+
+
+✏️Hemos habilitado y creado Politicas RSL para poder hacer INSER y SELECT de los logs
+💡El proyecto YA ESTA enlazado con supa, mediante las keys, que siguen siendo las mismas.
+
+
+
+2. ************** Middleware para registrar logs en Supabase
+app.use(async (req, res, next) => {
+  // Prepara el log
+  const log = {
+    fecha: new Date().toISOString(),
+    ip: req.ip,
+    metodo: req.method,
+    ruta: req.originalUrl,
+    origen: req.headers.origin || 'directo',
+    user_agent: req.headers['user-agent'] || '',
+  };
+
+  // Guarda el log en Supabase
+  try {
+    await supabase.from('logs').insert([log]);
+
+    // Muestra en consola (para Render)
+    console.log(`[LOG] ${log.fecha} - ${log.metodo} ${log.ruta} desde ${log.origen} (${log.ip}) UA:${log.user_agent}`);
+  
+  } catch (error) {
+    console.error('Error guardando log en Supabase:', error);
+    // No detenemos la petición si falla el log
+  }
+
+  next();
+});
+
+
+
+******************** Ruta para ver logs (protégela en producción)
+app.get("/logs", async (req, res) => {
+  const { data, error } = await supabase
+    .from("logs")
+    .select("*")
+    .order("fecha", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error("Error al obtener logs:", error);
+    return res.status(500).json({ error: "Error al obtener logs" });
+  }
+  
+  res.json(data);
+});
+
+
+
+
+************************Creando templates HTML con Express para servirlos desde el backend
+
+💡1. npm install ejs
+
+2. Crea una carpeta llamada "views" en la raíz de tu proyecto y dentro un archivo llamado "logtabla.ejs" 
+con el siguiente codigo:
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Logs</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #888; padding: 8px; text-align: left; }
+    th { background: #eee; }
+    tr:nth-child(even) { background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h2>Últimos 100 logs</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>IP</th>
+        <th>Método</th>
+        <th>Ruta</th>
+        <th>Origen</th>
+        <th>User-Agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% logs.forEach(log => { %>
+        <tr>
+          <td><%= log.id %></td>
+          <td><%= log.fecha %></td>
+          <td><%= log.ip %></td>
+          <td><%= log.metodo %></td>
+          <td><%= log.ruta %></td>
+          <td><%= log.origen %></td>
+          <td><%= log.user_agent %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</body>
+</html>
+
+
+
+
+3. Configura EJS en tu app Express
+Agrega esto al inicio de tu archivo principal (antes de las rutas):
+
+app.set('view engine', 'ejs');
+app.set('views', './views'); // Carpeta donde pondrás tus templates
+
+
+
+4. Crea la ruta en Express usando el template
+
+app.get('/logtabla', async (req, res) => {
+  const { data: logs, error } = await supabase
+    .from('logs')
+    .select('*')
+    .order('fecha', { ascending: false })
+    .limit(100);
+
+  if (error) return res.status(500).send('Error al obtener logs');
+
+  💡res.render('logtabla', { logs }); // Renderiza el template y pasa los logs
+});
+
+
+
+
+💡💡Explicación
+res.render() es un método de Express.js que sirve para renderizar (mostrar) una vista o plantilla al usuario.
+En este caso, está renderizando una plantilla llamada 'logtabla' (la q esta dentro de /views)
+Además, le pasa un objeto con los datos de los logs: { logs }.
+Esto significa que dentro de la plantilla 'logtabla' (por ejemplo, un archivo .ejs, .pug, .hbs, etc.), 
+podrás acceder a la variable logs y mostrar la información que contiene.
+
+👀¿Para qué sirve?
+Sirve para mostrar los datos obtenidos de la base de datos en una página web.
+Permite separar la lógica del servidor de la presentación (HTML).
+Así puedes tener una página dinámica que muestra los últimos 100 logs obtenidos de la base de datos.
+
+
+

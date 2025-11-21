@@ -1,0 +1,30 @@
+-- Crear tabla usuarios 
+CREATE TABLE IF NOT EXISTS usuarios (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    nombre TEXT NOT NULL,
+    edad INT4 NOT NULL CHECK (edad > 0 AND edad <= 120),
+    email TEXT NOT NULL UNIQUE,
+    foto TEXT,
+    aceptacion INT4 DEFAULT 0,
+    genero BOOLEAN
+);
+
+-- Índices para búsquedas rápidas
+CREATE INDEX IF NOT EXISTS idx_usuarios_nombre ON usuarios(nombre);
+CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+
+-- Habilitar acceso público (desarrollo)
+ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Acceso público"
+ON usuarios FOR ALL
+USING (true)
+WITH CHECK (true);
+
+-- Datos de prueba
+INSERT INTO usuarios (nombre, edad, email, foto, aceptacion, genero) VALUES
+    ('Juan Pérez', 28, 'juan@example.com', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwGmUlO6a-mRXFJOWixzhYDNIiXL4sjhXlxw&s', 1, true),
+    ('María García', 32, 'maria@example.com', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwGmUlO6a-mRXFJOWixzhYDNIiXL4sjhXlxw&s', 1, false),
+    ('Carlos López', 45, 'carlos@example.com', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwGmUlO6a-mRXFJOWixzhYDNIiXL4sjhXlxw&s', 0, true)
+ON CONFLICT (email) DO NOTHING;
