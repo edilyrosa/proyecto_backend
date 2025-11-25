@@ -46,11 +46,10 @@ app.get("/usuarios/:id", async (req, res, next) =>{
 
 let camposValidos = ['nombre', 'email', 'edad', 'aceptacion', 'foto', 'genero']
 
-app.put("/usuarios/:id", async (req, res, next) => {
-
+app.put("/usuarios/:id", async (req, res, next) =>{
     try {
         const id = req.params.id
-        const usuario = req.body //TDD Obj JS
+        const usuario = req.body
         const camposActualizar = Object.fromEntries( //* convierte un array de pares clave-valor en un obj → camposActualizar es un obj
            Object.entries(usuario).filter(([key, value]) => { 
             //!FALTO return
@@ -122,6 +121,7 @@ app.use((err, req, res, next) =>{
         res.status(500).json({error: 'Error interno del servidor'})
     }
 })
+
 //TODO:SOLA
 
 
